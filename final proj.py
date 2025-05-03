@@ -32,7 +32,7 @@ def is_file_up_to_date(file_path, deadline): #deadline is date to compare agains
             data = json.load(f)
     except json.JSONDecodeError:
         return False #invalid JSON
-    last_updated_str = data.get('timestamp','190-01-01')
+    last_updated_str = data.get('timestamp','1900-01-01')
     try:
         last_updated = datetime.strptime(last_updated_str, '%Y-%m-%d') #converts timestamp string to datetime
         return last_updated > deadline #compare timestamp with deadline
