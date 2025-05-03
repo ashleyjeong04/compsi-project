@@ -165,6 +165,19 @@ def fetch_player_stats(player_id):
         print(f"Error decoding player stats JSON")
         return {}
 
+def fetch_team_stats(player_id):
+    url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats?stats=season" #construct API URL
+    try:
+        response = requests.get(url) #make API request
+        response.raise_for_status()
+        return response.json() #return JSON response
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching team stats: {e}")
+        return {}
+    except json.JSONDecodeError:
+        print(f"Error decoding team stats JSON")
+        return {}
+
 #example usage, replace 'Your Team' and date range
 if __name__ == "__main__":
     valid_entities = load_or_update_valid_entries()
@@ -230,8 +243,7 @@ def main():
     if entity_type == 'player':
         stats = fetch_player_stats(entity_id) #fetch player stats
     elif entity_type == 'team':
-        #stats = fetch_team_stats(entity_id) #need to implement fetch_team_stats
-        stats = {} # PLACEHOLDER !!
+        stats = fetch_team_stats(entity_id) #fetch team stats
     elif entity_type == 'league':
         stats = {} # PLACEHOLDer !! 
 
