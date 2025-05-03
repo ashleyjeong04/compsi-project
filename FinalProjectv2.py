@@ -18,7 +18,7 @@ VALID_ENTRIES_FILE = "valid_mlb_entities.json"
 # Trade deadline timestamp to know when local data may be outdated
 TRADE_DEADLINE = datetime(2024, 7, 30)
 # News API key (replace with your actual API key)
-NEWS_API_KEY = 5fce54ce82e2cc4b47d46a5022583dd8  # Replace with your actual API key
+NEWS_API_KEY = "5fce54ce82e2cc4b47d46a5022583dd8"  # Replace with your actual API key
 NEWS_API_URL = "https://gnews.io/api/v4/search"  # GNews base URL
 
 # 2. Entity verification and initialization
