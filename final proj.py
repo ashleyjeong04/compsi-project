@@ -161,9 +161,9 @@ def fetch_player_stats(player_id):
         return {}
 
 #example usage, replace 'Your Team' and date range
-if __name__ == "__main)__":
+if __name__ == "__main__":
     valid_entities = load_or_update_valid_entries()
-    print(f"Loaded {len(valid_entities.get('players', []))} players and {len(valid_entities.get('teams'))} teams.")
+    print(f"Loaded {len(valid_entities.get('players', []))} players and {len(valid_entities.get('teams',[]))} teams.")
 
     query = "New York Yankees"
     from_date_str = "2025-05-01"
@@ -190,7 +190,7 @@ def main():
 
     entity_id = None
     entity_type = None
-    entity_type = None 
+    entity_name = None 
 
     #try to match player names 
     if not entity_id:
