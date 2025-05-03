@@ -18,8 +18,13 @@ VALID_ENTRIES_FILE = "valid_mlb_entities.json"
 #Trade deadline timestamp to know when local data may be outdated
 TRADE_DEADLINE = datetime(2024, 7, 30)
 #News API key (need to replace with actual API key)
-NEWS_API_KEY = "YOUR_API_KEY" #Replace with actual API key
-NEWS_API_URL = "https://gnews.io.api/v4/search" #GNews base URL
+NEWS_API_KEY = 5fce54ce82e2cc4b47d46a5022583dd8 #Replace with actual API key
+NEWS_API_URL = "https://gnews.io/api/v4/search" #GNews base URL
+
+'''
+should convert these to a .env if we have time at the end to show we aren't stupid with API handling, but that's a secondary problem
+'''
+
 
 # 2. Entity verificaiton and iniialization
 
@@ -194,11 +199,11 @@ def main():
 
     #try to match player names 
     if not entity_id:
-        for team in valid_entries.get('teams', []):
-            if user_input.lower() in team['name'].lower():
-                entity_id = team['id']
-                entity_type = 'team'
-                entity_name = team['name']
+        for player in valid_entries.get('players', []):
+            if user_input.lower() in player['name'].lower():
+                entity_id = player['id']
+                entity_type = 'player'
+                entity_name = player['name']
                 break
 
     #try to match team names
@@ -223,7 +228,7 @@ def main():
     #data retrieva
     stats = {}
     if entity_type == 'player':
-        stats = fetch_player_stats('entity_id') #fetch player stats
+        stats = fetch_player_stats(entity_id) #fetch player stats
     elif entity_type == 'team':
         #stats = fetch_team_stats(entity_id) #need to implement fetch_team_stats
         stats = {} # PLACEHOLDER !!
@@ -260,9 +265,9 @@ def display_results(entity_name, stats, articles):
             print(f"Sentiment Score: {article.get('sentiment_score'):.2f}")
             print(f"URL: {article.get('url')}")
             print("-"*20)
-        else:
-            print("\n---Recent news---")
-            print("No recent news articles found.")
+    else:
+        print("\n---Recent news---")
+        print("No recent news articles found.")
                   
 
 if __name__ == "__main__":
