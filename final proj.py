@@ -165,7 +165,7 @@ def fetch_player_stats(player_id):
         print(f"Error decoding player stats JSON")
         return {}
 
-def fetch_team_stats(player_id):
+def fetch_team_stats(team_id):
     url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats?stats=season" #construct API URL
     try:
         response = requests.get(url) #make API request
