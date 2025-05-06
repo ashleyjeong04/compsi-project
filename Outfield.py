@@ -1,15 +1,17 @@
+#1 Setup: Imports and Globals 
+
 import os
-from dotenv import load_dotenv
-import time
-import json
-import requests
-import sqlite3
-from datetime import datetime
-import nltk
-import textwrap
-nltk.download('vader_lexicon')
-from nltk.sentiment import SentimentIntensityAnalyzer
-import matplotlib.pyplot as plt
+from dotenv import load_dotenv # To load variables from a .env file
+import time # For time-related functions
+import json # To read from and write to JSON files
+import requests # To make HTTP requests to APIs
+import sqlite3 # To store articles in a local database
+from datetime import datetime # Imports a class to handle date and time operations
+import nltk # Natural Language Toolkit for sentiment analysis
+import textwrap # To format and wrap long text for disdplay
+nltk.download('vader_lexicon') # Download lexicon used for sentiment scoring with NTLK
+from nltk.sentiment import SentimentIntensityAnalyzer # Imports VADER to score sentiment
+import matplotlib.pyplot as plt # Imports plotting library for data vis
 
 load_dotenv()
 
@@ -21,21 +23,25 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 if not NEWS_API_KEY:
     raise RuntimeError("Missing required environment variable: NEWS_API_KEY")
 
-def is_file_up_to_date(file_path, deadline):
-    if not os.path.exists(file_path):
-        return False
+# 2. Entity Verification and Initialization
+
+# Check if local file with valid player/team data exists and is up-to-date
+def is_file_up_to_date(file_path, deadline): # Deadline is date to compare against
+    if not os.path.exists(file_path): 
+        return False # If file doesn't exist
     try:
-        with open(file_path, 'r') as f:
+        with open(file_path, 'r') as f: # Attempts to open and read file as JSON
             data = json.load(f)
-    except json.JSONDecodeError:
-        return False
+    except json.JSONDecodeError: 
+        return False # If file content isn't valid JSON
     last_updated_str = data.get('timestamp', '1900-01-01')
     try:
-        last_updated = datetime.strptime(last_updated_str, '%Y-%m-%d')
-        return last_updated > deadline
+        last_updated = datetime.strptime(last_updated_str, '%Y-%m-%d') # Converts timestamp string to datetime
+        return last_updated > deadline # Compare timestamp with deadline 
     except ValueError:
-        return False
+        return False # Invalid date format 
 
+# If file is missing/outdated, fetch player and team data from the API and save to local file
 def fetch_and_cache_valid_entries():
     """
     Fetches all MLB teams, then for each team fetches its active roster,
@@ -44,35 +50,35 @@ def fetch_and_cache_valid_entries():
     print("Fetching teams from MLB StatsAPI…")
     try:
         # 1. Get the list of all MLB teams
-        teams_resp = requests.get(f"{MLB_STATS_API_BASE}/teams?sportId=1")
-        teams_resp.raise_for_status()
-        teams_list = teams_resp.json().get("teams", [])
+        teams_resp = requests.get(f"{MLB_STATS_API_BASE}/teams?sportId=1")  # Send HTTP GET request to fetch all MLB teams
+        teams_resp.raise_for_status() # Check for HTTP errors
+        teams_list = teams_resp.json().get("teams", []) # Extract list of teams 
     except requests.exceptions.RequestException as e:
         print(f"Error fetching teams: {e}")
-        teams_list = []
+        teams_list = [] # Print empty list if error
 
     current_season = datetime.now().year
-    valid_data = {
+    valid_data = { # Initializes data to store valid entries and set a current timestamp.
         "teams": [],
         "players": [],
         "timestamp": datetime.now().strftime("%Y-%m-%d")
     }
 
     # 2. For each team, record its info and fetch its active roster
-    for team in teams_list:
+    for team in teams_list: # Loops through teams 
         team_id = team.get("id")
         team_name = team.get("name")
         if not team_id or not team_name:
-            continue
+            continue # Skips teams with missing ID or name
 
-        valid_data["teams"].append({
+        valid_data["teams"].append({ # Appends the team to the teams list 
             "id": team_id,
             "name": team_name
         })
 
-        print(f"  • Fetching roster for {team_name} (ID {team_id})…")
+        print(f"  • Fetching roster for {team_name} (ID {team_id})…")  # Prints the team being processed
         try:
-            roster_resp = requests.get(
+            roster_resp = requests.get( # Requests the team's active roster
                 f"{MLB_STATS_API_BASE}/teams/{team_id}/roster",
                 params={
                     "season": current_season,
@@ -81,7 +87,7 @@ def fetch_and_cache_valid_entries():
             )
             roster_resp.raise_for_status()
             roster_entries = roster_resp.json().get("roster", [])
-        except requests.exceptions.RequestException as e:
+        except requests.exceptions.RequestException as e: # Handles request errors
             print(f"    Error fetching roster for {team_name}: {e}")
             roster_entries = []
 
@@ -104,19 +110,19 @@ def fetch_and_cache_valid_entries():
     except OSError as e:
         print(f"Error writing {VALID_ENTRIES_FILE}: {e}")
 
-def load_or_update_valid_entries():
-    if is_file_up_to_date(VALID_ENTRIES_FILE, TRADE_DEADLINE):
-        try:
+def load_or_update_valid_entries(): # Load from file or refetch if needed
+    if is_file_up_to_date(VALID_ENTRIES_FILE, TRADE_DEADLINE): # Checks if the file is up to date
+        try: 
             with open(VALID_ENTRIES_FILE, 'r') as f:
-                data = json.load(f)
+                data = json.load(f) # Returns the loaded file if valid
                 print(f"\nCurrent roster JSON found! Identified {len(data['players'])} players on {len(data['teams'])} teams.")
                 return data
-        except (json.JSONDecodeError, OSError) as e:
+        except (json.JSONDecodeError, OSError) as e: # If there's an error, fetch again and then load
             print(f"Error reading or decoding {VALID_ENTRIES_FILE}: {e}. Re-fetching.")
             fetch_and_cache_valid_entries()
             with open(VALID_ENTRIES_FILE, 'r') as f:
                 return json.load(f)
-    else:
+    else: # If outdated, fetch and retry. If errors persist, return an empty structure
         fetch_and_cache_valid_entries()
         try:
             with open(VALID_ENTRIES_FILE, 'r') as f:
@@ -125,11 +131,11 @@ def load_or_update_valid_entries():
             print(f"Error reading {VALID_ENTRIES_FILE} after fetching: {e}")
             return {"players": [], "teams": []}
 
-# 3. News retrieval and sentiment analysis
+# 3. News Retrieval and Sentiment Analysis
 
-def fetch_news(query, from_date, to_date):
-    total_articles = 10
-    url = (
+def fetch_news(query, from_date, to_date): # To get news articles related to a query in a specific time period
+    total_articles = 10 # Limits the number of articles to 10
+    url = ( # Constructs the URL for the API request, inserting the query (search term), date range, and API key
         f"{NEWS_API_URL}"
         f"?q={query}"
         f"&from={from_date}"
@@ -138,28 +144,29 @@ def fetch_news(query, from_date, to_date):
         f"&token={NEWS_API_KEY}"
     )
     try:
-        response = requests.get(url)
+        response = requests.get(url) # Sends request and raises an error if the status is not ok
         response.raise_for_status()
-        time.sleep(1)  # respect rate limits
-        data = response.json()
-        return data.get("articles", [])
-    except json.JSONDecodeError:
-        print("Error decoding JSON from News API")
+        time.sleep(1)  # Pauses for 1 second to respect GNews rate limits
+        data = response.json() # Parses JSON response and returns list of articles
+        return data.get("articles", []) # If list not found, returns empty list
+    except json.JSONDecodeError: # If JSON parsing errors, returns empty list
+        print("Error decoding JSON from News API") 
         return []
-    except requests.exceptions.RequestException as e:
+    except requests.exceptions.RequestException as e: # If network-related errors, returns empty list
         print(f"Error fetching news: {e}")
         return []
 
-def analyze_sentiment(articles):
-    sia = SentimentIntensityAnalyzer()
-    for article in articles:
-        content = article.get('description', '') or ''
-        sentiment = sia.polarity_scores(content)
-        article['sentiment_score'] = sentiment['compound']
-    return articles
+def analyze_sentiment(articles): # VADER for scoring sentiment of each article  
+    sia = SentimentIntensityAnalyzer() 
+    for article in articles: # Loop through each article in the list 
+        content = article.get('description', '') or '' # Gets the article description/text to analyze
+        sentiment = sia.polarity_scores(content) # Calculates sentiment scores 
+        article['sentiment_score'] = sentiment['compound'] # Compound score (sentiment from -1 to 1)
+    return articles # Return modified articles with sentiment scores
 
-def categorize_score(score):
-    if score <= -0.667:
+# Converts numeric sentiment score into labels 
+def categorize_score(score): 
+    if score <= -0.667: # Defines ranges for each label, from strongly negative to strongly positive
         return "Strongly negative"
     elif score <= -0.334:
         return "Moderately negative"
@@ -174,19 +181,20 @@ def categorize_score(score):
     else:
         return "Strongly positive"
 
-def store_articles(articles, db_path="news_articles.db"):
+# Stores articles to a local SQLite database file
+def store_articles(articles, db_path="news_articles.db"): 
     try:
-        conn = sqlite3.connect(db_path)
-        c = conn.cursor()
-        c.execute('''CREATE TABLE IF NOT EXISTS articles (
+        conn = sqlite3.connect(db_path) # Connects to the SQLite database 
+        c = conn.cursor() # Creates cursor object to execute SQL statements
+        c.execute('''CREATE TABLE IF NOT EXISTS articles ( 
             title TEXT,
             date TEXT,
             author TEXT,
             url TEXT,
             source TEXT,
             sentiment REAL
-        )''')
-        for article in articles:
+        )''') # Creates table named "articles"
+        for article in articles: # Loops through each article 
             c.execute("INSERT INTO articles VALUES (?,?,?,?,?,?)", (
                 article.get('title'),
                 article.get('publishedAt'),
@@ -194,28 +202,33 @@ def store_articles(articles, db_path="news_articles.db"):
                 article.get('url'),
                 article.get('source', {}).get('name'),
                 article.get('sentiment_score')
-            ))
+            )) # After inserting each article into the SQLite database, extracts relevant fields to add to table
         conn.commit()
-        conn.close()
+        conn.close() # Saves changes and closes SQLite database connection
     except sqlite3.Error as e:
-        print(f"Database error: {e}")
+        print(f"Database error: {e}") # Handles and prints database errors 
 
+# 4. Statistical Lookup
+
+# Fetch player stats from the MLB API 
 def fetch_player_stats(player_id):
-    url = f"{MLB_STATS_API_BASE}/people/{player_id}/stats?stats=season"
+    url = f"{MLB_STATS_API_BASE}/people/{player_id}/stats?stats=season" # Construct URL for player stats using player_id
     try:
-        response = requests.get(url)
-        response.raise_for_status()
-        return response.json()
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching player stats: {e}")
+        response = requests.get(url) # GET request to the API 
+        response.raise_for_status() 
+        return response.json() # Return JSON response
+    except requests.exceptions.RequestException as e:  # Handle network or HTTP errors 
+        print(f"Error fetching player stats: {e}") # Handle JSON parsing errors
         return {}
     except json.JSONDecodeError:
         print("Error decoding player stats JSON")
         return {}
 
-def display_player_stats(entity_name, stats_json):
+# 5. Display Results
+
+def display_player_stats(entity_name, stats_json): # Show formatted player stats based on their position
     
-    stats_list = stats_json.get('stats', [])
+    stats_list = stats_json.get('stats', [])  # Extract the "stats" list from the response
     if not stats_list:
         print("No stats available.")
         return
@@ -226,12 +239,14 @@ def display_player_stats(entity_name, stats_json):
         print("No seasonal splits found.")
         return
         
-    team_name = splits[0].get('team', {}).get('name', 'Unknown Team')
-    
+    team_name = splits[0].get('team', {}).get('name', 'Unknown Team') # Get the team name or default to Unknown Team
+
+    # Print player header
     print("\n" + "="*80)
     print(f" Stats for {entity_name} ({team_name}):")
     print("="*80)
 
+     # Get the stat dictionary
     stat = splits[0].get('stat', {})
 
     # Determine if hitting or pitching based on keys present
@@ -264,8 +279,9 @@ def display_player_stats(entity_name, stats_json):
         for key, value in stat.items():
             print(f"{key}: {value}")
 
+# Get a team's seasonal performance stats 
 def fetch_team_stats(team_id):
-    url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats"
+    url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats" # Construct URL for team stats 
     params = {
         "stats":     "statsSingleSeason",           # the stat type
         "season":    str(datetime.now().year),      # must be a string
@@ -273,10 +289,10 @@ def fetch_team_stats(team_id):
         "sportIds":  "1",                           # MLB only
         "gameType":  "R"                            # Regular‐season only
     }
-    try:
+    try: # Make request with parameters
         resp = requests.get(url, params=params)
         resp.raise_for_status()
-        return resp.json()
+        return resp.json() # Return parsed JSON
     except requests.exceptions.RequestException as e:
         print(f"Error fetching team stats: {e}")
         return {}
@@ -285,8 +301,8 @@ def fetch_team_stats(team_id):
         return {}
         
 def display_team_stats(team_name, stats_json):
-    print(f"\n--- Stats for {team_name} (Team) ---")
-    stats_list = stats_json.get('stats', [])
+    print(f"\n--- Stats for {team_name} (Team) ---")  # Print header for team stats
+    stats_list = stats_json.get('stats', []) # Get 'stats' list from the API response 
     if not stats_list:
         print("No stats available.")
         return
@@ -297,10 +313,10 @@ def display_team_stats(team_name, stats_json):
         print("No seasonal splits found.")
         return
 
-    stat = splits[0].get('stat', {})
+    stat = splits[0].get('stat', {}) # Get the actual stats dictionary
 
     # Common team stats you might want to show:
-    wins          = stat.get('wins', 'N/A')
+    wins          = stat.get('wins', 'N/A') # Extract specific team stats for display
     losses        = stat.get('losses', 'N/A')
     win_pct       = stat.get('winPct', 'N/A')
     runs_scored   = stat.get('runsScored', 'N/A')
@@ -309,16 +325,18 @@ def display_team_stats(team_name, stats_json):
     away_wins     = stat.get('awayWins', 'N/A')
     streak        = stat.get('currentStreak', {}).get('streakCode', 'N/A')
 
+    # Print team performance metrics
     print(f"Record        : {wins}-{losses} ({win_pct})")
     print(f"Runs Scored   : {runs_scored}")
     print(f"Runs Against  : {runs_against}")
     print(f"Home Wins     : {home_wins}")
     print(f"Away Wins     : {away_wins}")
     print(f"Streak        : {streak}")
-            
-def display_results(entity_name, entity_type, stats, articles):
+
+# Display stats based on entity type 
+def display_results(entity_name, entity_type, stats, articles): 
     if entity_type == "player":
-        display_player_stats(entity_name, stats)
+        display_player_stats(entity_name, stats) # Show player stats
     elif entity_type == "team":
         print("\nStatistical data for teams coming soon!") # TO DO: display_team_stats(entity_name, stats) /// API is much more complicated for team stats than player stats, needs more fine-tuning before it's ready
     else:
@@ -331,7 +349,8 @@ def display_results(entity_name, entity_type, stats, articles):
             end_date = max(dates)
         else:
             start_date = end_date = 'N/A'
-            
+
+        # Calculate average sentiment score across all articles 
         avg_sent = (sum(a.get('sentiment_score', 0.0) for a in articles)/ len(articles)) if articles else 0.0
         
         
@@ -341,25 +360,29 @@ def display_results(entity_name, entity_type, stats, articles):
         print(f"   Average Sentiment Score: {avg_sent:+.3f} ({categorize_score(avg_sent)})")
         print("="*80)
 
+        # Iterate through and display each article 
         for idx, article in enumerate(articles, start=1):
             date  = article.get('publishedAt', '')[:10] or 'N/A'
             title = article.get('title', 'No Title')
             score = article.get('sentiment_score', 0.0)
+
+            # Build snippet from article description or content 
             content = article.get('description') or article.get('content') or ''
             snippet = " ".join(content.split()[:30]) + "..."
             url   = article.get('url', '')
 
+            # Print article metadata
             print(f"\n{idx}. {title}")
             print(f"   Date: {date}    Sentiment Score: {score:+.3f} ({categorize_score(score)})")
             print("   Snippet:")
-            for line in textwrap.wrap(snippet, width=76):
+            for line in textwrap.wrap(snippet, width=76): # Wrap long lines 
                 print(f"     {line}")
             if url:
-                print(f"   Read more: {url}")
+                print(f"   Read more: {url}") # Include article link 
 
             print("-"*80)
             
-        # Sentiment Distribution
+        # Plot histogram of sentiment Distribution
         sentiments = [a['sentiment_score'] for a in articles]
         plt.figure()
         plt.hist(sentiments, bins=20)
@@ -368,7 +391,7 @@ def display_results(entity_name, entity_type, stats, articles):
         plt.ylabel("Number of Articles")
         plt.show()
 
-        # Sentiment Over Time
+        #  Plot sentiment over time
         try:
             dates = [datetime.strptime(a.get('publishedAt', '')[:10], '%Y-%m-%d') for a in articles]
             plt.figure()
@@ -382,19 +405,23 @@ def display_results(entity_name, entity_type, stats, articles):
         except Exception as e:
             print(f"Could not plot sentiment over time: {e}")
 
+# 6. Main flow of program, user interface
+
 def main():
-    valid = load_or_update_valid_entries()
+    valid = load_or_update_valid_entries() # Calls function to load from cache or retrieve fresh list of valid teams/players 
+
+    # Creates two dictionaries that map lowercase taem/player names to their full data dictionaries
     team_map   = { t['name'].lower(): t for t in valid['teams'] }
     player_map = { p['name'].lower(): p for p in valid['players'] }
 
     while True:
-        user_input = input("\nEnter full player or team name (type EXIT to quit): ").strip().lower()
+        user_input = input("\nEnter full player or team name (type EXIT to quit): ").strip().lower() # Loop prompting user to input team/player name or type EXIT
 
         if user_input == "exit":
             print("Goodbye!")
-            return
+            return # If user types EXIT, prints goodbye message ane exits
 
-        if user_input in team_map:
+        if user_input in team_map: # Check if user input matches a known team or player 
             entity_type, entity_id, entity_name = 'team',   team_map[user_input]['id'],   team_map[user_input]['name']
             break
         elif user_input in player_map:
@@ -406,8 +433,8 @@ def main():
         else:
             print("Invalid input. Please enter a valid player or team name.")
 
-    stats = {}
-    if entity_type == 'player':
+    stats = {} # Initialize empty dictionary to store performance data
+    if entity_type == 'player': # If user inputed player, fetches stats using player ID 
         stats = fetch_player_stats(entity_id)
     elif entity_type == 'team':
         stats == {} # TO DO: display_team_stats(entity_name, stats) /// API is much more complicated for team stats than player stats, needs more fine-tuning before it's ready
@@ -417,8 +444,10 @@ def main():
     now = datetime.now()
     from_date_str = (now.replace(day=1)).strftime('%Y-%m-%d')
     to_date_str = now.strftime('%Y-%m-%d')
+
+    # Fetch news articles using selected name within date range
     articles = fetch_news(entity_name if entity_type != 'league' else 'MLB', from_date_str, to_date_str)
-    scored_articles = analyze_sentiment(articles)
+    scored_articles = analyze_sentiment(articles) # Store scored articles in local database
     store_articles(scored_articles)
 
     display_results(entity_name, entity_type, stats, scored_articles)
