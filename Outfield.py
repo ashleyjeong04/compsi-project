@@ -1,4 +1,7 @@
-#1 Setup: Imports and Globals 
+'''
+SECTION 1
+Setup: Imports and Globals 
+'''
 
 import os
 from dotenv import load_dotenv # To load variables from a .env file
@@ -23,7 +26,10 @@ NEWS_API_KEY = os.getenv("NEWS_API_KEY")
 if not NEWS_API_KEY:
     raise RuntimeError("Missing required environment variable: NEWS_API_KEY")
 
-# 2. Entity Verification and Initialization
+'''
+SECTION 2
+Entity Verification and Initialization
+'''
 
 # Check if local file with valid player/team data exists and is up-to-date
 def is_file_up_to_date(file_path, deadline): # Deadline is date to compare against
@@ -131,7 +137,10 @@ def load_or_update_valid_entries(): # Load from file or refetch if needed
             print(f"Error reading {VALID_ENTRIES_FILE} after fetching: {e}")
             return {"players": [], "teams": []}
 
-# 3. News Retrieval and Sentiment Analysis
+'''
+SECTION 3
+News Retrieval and Sentiment Analysis
+'''
 
 def fetch_news(query, from_date, to_date): # To get news articles related to a query in a specific time period
     total_articles = 10 # Limits the number of articles to 10
@@ -208,7 +217,10 @@ def store_articles(articles, db_path="news_articles.db"):
     except sqlite3.Error as e:
         print(f"Database error: {e}") # Handles and prints database errors 
 
-# 4. Statistical Lookup
+'''
+SECTION 4
+Statistical Lookup
+'''
 
 # Fetch player stats from the MLB API 
 def fetch_player_stats(player_id):
@@ -224,7 +236,31 @@ def fetch_player_stats(player_id):
         print("Error decoding player stats JSON")
         return {}
 
-# 5. Display Results
+# Get a team's seasonal performance stats 
+def fetch_team_stats(team_id):
+    url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats" # Construct URL for team stats 
+    params = {
+        "stats":     "statsSingleSeason",           # the stat type
+        "season":    str(datetime.now().year),      # must be a string
+        "group":     "team",                        
+        "sportIds":  "1",                           # MLB only
+        "gameType":  "R"                            # Regular‐season only
+    }
+    try: # Make request with parameters
+        resp = requests.get(url, params=params)
+        resp.raise_for_status()
+        return resp.json() # Return parsed JSON
+    except requests.exceptions.RequestException as e:
+        print(f"Error fetching team stats: {e}")
+        return {}
+    except json.JSONDecodeError:
+        print("Error decoding team stats JSON")
+        return {}
+
+'''
+SECTION 5
+Output Generation
+'''
 
 def display_player_stats(entity_name, stats_json): # Show formatted player stats based on their position
     
@@ -278,27 +314,6 @@ def display_player_stats(entity_name, stats_json): # Show formatted player stats
         # Other stats
         for key, value in stat.items():
             print(f"{key}: {value}")
-
-# Get a team's seasonal performance stats 
-def fetch_team_stats(team_id):
-    url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats" # Construct URL for team stats 
-    params = {
-        "stats":     "statsSingleSeason",           # the stat type
-        "season":    str(datetime.now().year),      # must be a string
-        "group":     "team",                        
-        "sportIds":  "1",                           # MLB only
-        "gameType":  "R"                            # Regular‐season only
-    }
-    try: # Make request with parameters
-        resp = requests.get(url, params=params)
-        resp.raise_for_status()
-        return resp.json() # Return parsed JSON
-    except requests.exceptions.RequestException as e:
-        print(f"Error fetching team stats: {e}")
-        return {}
-    except json.JSONDecodeError:
-        print("Error decoding team stats JSON")
-        return {}
         
 def display_team_stats(team_name, stats_json):
     print(f"\n--- Stats for {team_name} (Team) ---")  # Print header for team stats
@@ -353,7 +368,6 @@ def display_results(entity_name, entity_type, stats, articles):
         # Calculate average sentiment score across all articles 
         avg_sent = (sum(a.get('sentiment_score', 0.0) for a in articles)/ len(articles)) if articles else 0.0
         
-        
         print("\n" + "="*80)
         print(f" News Articles for {entity_name} ({len(articles)} found):")
         print(f"   Date Range             : {start_date} to {end_date}")
@@ -405,7 +419,10 @@ def display_results(entity_name, entity_type, stats, articles):
         except Exception as e:
             print(f"Could not plot sentiment over time: {e}")
 
-# 6. Main flow of program, user interface
+'''
+SECTION 6
+Execution
+'''
 
 def main():
     valid = load_or_update_valid_entries() # Calls function to load from cache or retrieve fresh list of valid teams/players 
