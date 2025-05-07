@@ -427,7 +427,7 @@ Execution
 def main():
     valid = load_or_update_valid_entries() # Calls function to load from cache or retrieve fresh list of valid teams/players 
 
-    # Creates two dictionaries that map lowercase taem/player names to their full data dictionaries
+    # Creates two dictionaries that map lowercase team/player names to their full data dictionaries
     team_map   = { t['name'].lower(): t for t in valid['teams'] }
     player_map = { p['name'].lower(): p for p in valid['players'] }
 
@@ -436,7 +436,7 @@ def main():
 
         if user_input == "exit":
             print("Goodbye!")
-            return # If user types EXIT, prints goodbye message ane exits
+            return # If user types EXIT, prints goodbye message and exits
 
         if user_input in team_map: # Check if user input matches a known team or player 
             entity_type, entity_id, entity_name = 'team',   team_map[user_input]['id'],   team_map[user_input]['name']
