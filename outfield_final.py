@@ -240,7 +240,7 @@ def fetch_player_stats(player_id):
 def fetch_team_stats(team_id):
     url = f"{MLB_STATS_API_BASE}/teams/{team_id}/stats" # Construct URL for team stats 
     params = {
-        "season":    str(2025),
+        "season":    str(datetime.now().year),
         "stats":     "season", # must be a string
         "group":     "hitting",                        
     }
@@ -339,8 +339,6 @@ def display_team_stats(team_name, stats_json):
     obp           = stat.get('obp', 'N/A')
     stolen_bases  = stat.get('stolenBases', 'N/A')
     sb_pct        = stat.get('stolenBasePercentage', 'N/A')
- 
-
 
     # Print team performance metrics
     print(f"Games Played    : {games_played}")
